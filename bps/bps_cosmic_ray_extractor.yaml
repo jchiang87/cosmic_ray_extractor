@@ -1,0 +1,36 @@
+pipelineYaml: ${COSMIC_RAY_EXTRACTOR_DIR}/pipelines/cosmicRayExtractor.yaml
+
+payload:
+  weekly: ${WEEKLY}
+  inCollection: LSSTCam/defaults
+  payloadName: cosmic_rays_20260103_{weekly}
+  butlerConfig: ${BUTLER_CONFIG}
+  dataQuery: "instrument='LSSTCam' and day_obs=20260103 and observation_type='dark' and exposure_time=30.0 and exposure in (2026010300010..2026010300049)"
+
+wmsServiceClass: lsst.ctrl.bps.parsl.ParslService
+computeSite: task_vine
+
+parsl:
+  log_level: WARN
+
+site:
+  local:
+    class: lsst.ctrl.bps.parsl.sites.Local
+    cores: 2
+    monitorEnable: true
+    monitorFilename: runinfo/monitoring.db
+  task_vine:
+    class: bps_parsl_sites.SlurmTaskVine
+    walltime: "20:00:00"
+    exclusive: true
+    nodes_per_block: 1
+    provider_options:
+      init_blocks: 1
+      min_blocks: 0
+      max_blocks: 1
+    scheduler_options: |
+      #SBATCH --account=rubin:commissioning
+      #SBATCH --partition=torino
+    worker_options: "--memory=700000"  # total memory in MB
+    monitorEnable: true
+    monitorFilename: runinfo/monitoring.db

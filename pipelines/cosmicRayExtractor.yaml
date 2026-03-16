@@ -1,0 +1,33 @@
+description: Pipeline to extract cosmic-rays from dark exposures
+tasks:
+  dark_isr:
+    class: lsst.ip.isr.IsrTaskLSST
+    config:
+      connections.outputExposure: 'darkIsr'
+      doBias: true
+      doDark: false
+      doFlat: false
+      doBrighterFatter: false
+      doApplyGains: false
+      doLinearize: false
+      doDefect: true
+      doSaturation: false
+      doITLEdgeBleedMask: false
+      doE2VEdgeBleedMask: false
+      doITLSatSagMask: false
+      doSuspect: false
+      doCrosstalk: false
+      doDeferredCharge: false
+      doBootstrap: true
+      doCorrectGains: false
+      overscanCamera.defaultDetectorConfig.defaultAmpConfig.serialOverscanConfig.fitType: 'MEDIAN_PER_ROW'
+      overscanCamera.defaultDetectorConfig.defaultAmpConfig.serialOverscanConfig.leadingToSkip: 4
+      overscanCamera.defaultDetectorConfig.defaultAmpConfig.serialOverscanConfig.trailingToSkip: 4
+      python: >
+        import numpy;
+        config.ampNoiseThreshold = numpy.inf
+  cosmic_ray_extraction:
+    class: cosmic_ray_extractor.CosmicRaysTask
+    config:
+      connections.exposures: 'darkIsr'
+      connections.cosmic_ray_catalog: 'cosmic_ray_catalog'
