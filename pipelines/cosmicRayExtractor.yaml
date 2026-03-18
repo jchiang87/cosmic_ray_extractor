@@ -16,7 +16,7 @@ tasks:
       doE2VEdgeBleedMask: false
       doITLSatSagMask: false
       doSuspect: false
-      doCrosstalk: false
+      doCrosstalk: true
       doDeferredCharge: false
       doBootstrap: true
       doCorrectGains: false

@@ -11,6 +11,15 @@ from lsst.pipe.base import connectionTypes as cT
 __all__ = ("CosmicRaysTask",)
 
 
+def is_masked(mask, fp):
+    for span in fp.getSpans():
+        iy = span.getY()
+        for ix in range(span.getX0(), span.getX1() + 1):
+            if mask.array[iy][ix] > 0:
+                return True
+    return False
+
+
 class CosmicRaysTaskConnections(
         pipe_base.PipelineTaskConnections,
         dimensions=("instrument", "detector")
@@ -78,12 +87,13 @@ class CosmicRaysTask(pipe_base.PipelineTask):
     def run(self, exposures):
         flags = afw_math.MEANCLIP | afw_math.STDEVCLIP
         index = -1
+        data = defaultdict(list)
         for handle in exposures:
             exp = handle.get()
             det = exp.getDetector()
             det_name = det.getName()
             image = exp.getMaskedImage()
-            data = defaultdict(list)
+            mask = image.getMask()
             stats = afw_math.makeStatistics(image, flags)
             mean = stats.getValue(afw_math.MEANCLIP)
             threshold_value = self.frac_threshold * mean  # "VALUE:
@@ -97,6 +107,8 @@ class CosmicRaysTask(pipe_base.PipelineTask):
             # Subtract the baseline for signal extraction.
             image -= mean
             for fp in footprints:
+                if is_masked(mask, fp):
+                    continue
                 index += 1
                 for span in fp.getSpans():
                     data['index'].append(index)
