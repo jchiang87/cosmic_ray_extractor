@@ -1,23 +1,14 @@
 from collections import defaultdict
 import numpy as np
 import pandas as pd
-import lsst.afw.detection as afw_detect
 import lsst.afw.math as afw_math
+import lsst.meas.algorithms as meas_alg
 import lsst.pex.config as pex_config
 import lsst.pipe.base as pipe_base
 from lsst.pipe.base import connectionTypes as cT
 
 
 __all__ = ("CosmicRaysTask",)
-
-
-def is_masked(mask, fp):
-    for span in fp.getSpans():
-        iy = span.getY()
-        for ix in range(span.getX0(), span.getX1() + 1):
-            if mask.array[iy][ix] > 0:
-                return True
-    return False
 
 
 class CosmicRaysTaskConnections(
@@ -47,6 +38,18 @@ class CosmicRaysTaskConfig(
         pipe_base.PipelineTaskConfig,
         pipelineConnections=CosmicRaysTaskConnections
 ):
+    psf_size = pex_config.Field(
+        dtype=int,
+        doc="PSF size for CR detection in pixels",
+        default=21,
+    )
+
+    psf_fwhm = pex_config.Field(
+        dtype=float,
+        doc="PSF FWHM for CR detection in pixels",
+        default=3.0,
+    )
+
     background_size = pex_config.Field(
         doc="Approximate size in pixels of cells used for background scaling.",
         dtype=int, default=64
@@ -85,30 +88,37 @@ class CosmicRaysTask(pipe_base.PipelineTask):
         self.nsigma = self.config.nsigma
 
     def run(self, exposures):
-        flags = afw_math.MEANCLIP | afw_math.STDEVCLIP
+        # See https://github.com/lsst/pipe_tasks/blob/w.2026.12/python/lsst/pipe/tasks/repair.py#L226 and https://github.com/lsst/cp_pipe/blob/w.2026.12/python/lsst/cp/pipe/cpDark.py#L118
+        psf = meas_alg.SingleGaussianPsf(
+            self.config.psf_size,
+            self.config.psf_size,
+            self.config.psf_fwhm/(2.*np.sqrt(2.*np.log(2)))
+        )
+        cr_config = pex_config.makePropertySet(
+            meas_alg.findCosmicRaysConfig.FindCosmicRaysConfig()
+        )
+
         index = -1
         data = defaultdict(list)
         for handle in exposures:
             exp = handle.get()
+            exp.setPsf(psf)
             det = exp.getDetector()
             det_name = det.getName()
             image = exp.getMaskedImage()
-            mask = image.getMask()
-            stats = afw_math.makeStatistics(image, flags)
-            mean = stats.getValue(afw_math.MEANCLIP)
-            threshold_value = self.frac_threshold * mean  # "VALUE:
-            if self.threshold_type == "SIGMA":
-                stdev = stats.getValue(afw_math.STDEVCLIP)
-                threshold_value = mean + self.nsigma * stdev
-            threshold = afw_detect.createThreshold(
-                threshold_value, 'value')
-            footprints = afw_detect.FootprintSet(image, threshold)\
-                                   .getFootprints()
+            stats = afw_math.makeStatistics(image, afw_math.MEDIAN)
+            median_bg = stats.getValue(afw_math.MEDIAN)
+            keep_crs = True
+            footprints = meas_alg.findCosmicRays(
+                image,
+                psf,
+                median_bg,
+                cr_config,
+                keep_crs
+            )
             # Subtract the baseline for signal extraction.
-            image -= mean
+            image -= median_bg
             for fp in footprints:
-                if is_masked(mask, fp):
-                    continue
                 index += 1
                 for span in fp.getSpans():
                     data['index'].append(index)
