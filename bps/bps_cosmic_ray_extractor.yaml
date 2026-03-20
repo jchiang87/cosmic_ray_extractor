@@ -3,9 +3,9 @@ pipelineYaml: ${COSMIC_RAY_EXTRACTOR_DIR}/pipelines/cosmicRayExtractor.yaml
 payload:
   weekly: ${WEEKLY}
   inCollection: LSSTCam/defaults
-  payloadName: cosmic_rays_20260103_{weekly}
+  payloadName: cosmic_rays_meas_alg_20260103_{weekly}
   butlerConfig: ${BUTLER_CONFIG}
-  dataQuery: "instrument='LSSTCam' and day_obs=20260103 and observation_type='dark' and exposure_time=30.0 and exposure in (2026010300010..2026010300049)"
+  dataQuery: "instrument='LSSTCam' and day_obs=20260103 and observation_type='dark' and exposure_time=30.0 and exposure in (2026010300010..2026010300409)"
 
 wmsServiceClass: lsst.ctrl.bps.parsl.ParslService
 computeSite: task_vine
@@ -27,7 +27,7 @@ site:
     provider_options:
       init_blocks: 1
       min_blocks: 0
-      max_blocks: 1
+      max_blocks: 2
     scheduler_options: |
       #SBATCH --account=rubin:commissioning
       #SBATCH --partition=torino
