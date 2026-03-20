@@ -17,7 +17,7 @@ parser.add_argument("--num_dark_frames", type=int, default=400,
                     help="Number of dark frames")
 parser.add_argument("--pixels_per_ccd", type=int, default=16_000_000,
                     help="Number of pixels per CCD.")
-parser.add_argument("--nsamp", type=int, default=None
+parser.add_argument("--nsamp", type=int, default=None,
                     help="Number of pd_files to sample. "
                     "If None, then use all available files.")
 
